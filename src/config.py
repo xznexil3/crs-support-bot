@@ -13,7 +13,7 @@ PORT = int(os.getenv("PORT", "8080"))
 
 # === GitHub RAW публикация ===
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", os.getenv("GH_TOKEN", ""))  # твой ghp_... для пуша подписок
-GITHUB_REPO = os.getenv("GITHUB_REPO", "xznexil3/vless-parser-bot")  # куда пушить
+GITHUB_REPO = os.getenv("GITHUB_REPO", "xznexil3/crs-support-bot")  # куда пушить
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 # Папка в репозитории куда класть сгенерированные подписки (raw ссылка будет .../branch/<path>)
 GITHUB_SUB_PATH = os.getenv("GITHUB_SUB_PATH", "")  # пусто = в корень, или "subs" / "subscription"
