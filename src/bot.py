@@ -149,12 +149,12 @@ async def update_cache(categories=None, mode=None):
         # Обновляем AGGREGATED_CACHE локально (без raw_url пока)
         for fname, info in agg.items():
             if fname not in AGGREGATED_CACHE:
-                AGGREGATED_CACHE[fname] = {"count": info["count"], "content": info["content"], "raw_url": None}
+                AGGREGATED_CACHE[fname] = {"count": info["count"], "content": info["content"], "raw_url": get_raw_url(fname)}
             else:
                 AGGREGATED_CACHE[fname].update({"count": info["count"], "content": info["content"]})
-            # Пробуем залить на GitHub в фоне
-            if config.GITHUB_TOKEN:
-                asyncio.create_task(push_aggregated_to_github(agg))
+        # Пробуем залить на GitHub в фоне ОДИН РАЗ
+        if config.GITHUB_TOKEN and agg:
+            asyncio.create_task(push_aggregated_to_github(agg))
     except Exception as e:
         logger.error(f"aggregated error: {e}")
 
@@ -223,7 +223,7 @@ async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update_cache()
     await msg.edit_text(f"✅ Кэш обновлён! {msk_time()}\nВсего категорий: {len(CACHE)}", reply_markup=main_keyboard())
 
-async def get_command_factory(category_key: str, group_keys=None):
+def get_command_factory(category_key: str, group_keys=None):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Если группа (black/white/all)
         if group_keys:
