@@ -1,6 +1,6 @@
 # profile-title: 🏳️ БЕЛЫЕ СПИСКИ 🏳️ WHITE LISTS | Полная • Full | CIDR
 # profile-update-interval: 1
-# Date/Time: 2026-09-06 / 17:03 (Moscow)
+# Date/Time: 2026-09-06 / 17:04 (Moscow)
 # Количество: 25
 # For more info and VPN-configs - visit: www.github.com/igareck/vpn-configs-for-russia
 
