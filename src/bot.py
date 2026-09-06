@@ -46,6 +46,9 @@ def main_keyboard():
          InlineKeyboardButton("⬜ SNI (Fake)", callback_data="get:white_sni")],
         [InlineKeyboardButton("🌍 ВСЁ ВМЕСТЕ (ALL)", callback_data="get:all"),
          InlineKeyboardButton("🔐 Shadowsocks", callback_data="get:ss_black")],
+        [InlineKeyboardButton("🔥 RAW ЧЁРНЫЕ FULL", callback_data="raw:BLACK_FULL"),
+         InlineKeyboardButton("🔥 RAW БЕЛЫЕ FULL", callback_data="raw:WHITE_FULL")],
+        [InlineKeyboardButton("🚀 RAW COMBINED (все)", callback_data="raw:COMBINED")],
         [InlineKeyboardButton("🔗 Источники", callback_data="sources"),
          InlineKeyboardButton("❓ Помощь", callback_data="help")],
         [InlineKeyboardButton("🔄 Обновить кэш", callback_data="refresh")],
@@ -59,6 +62,67 @@ def category_keyboard(category_key: str):
          InlineKeyboardButton("📷 QR подписки", callback_data=f"qr:{category_key}")],
         [InlineKeyboardButton("⬅️ Назад", callback_data="home")],
     ])
+
+AGGREGATED_CACHE = {}  # {filename: {"content": str, "count": int, "raw_url": str}}
+
+def build_aggregated_configs():
+    """Собирает большие подписки из CACHE по правилам AGGREGATED_SUBS"""
+    from subscription import generate_aggregated_content, save_aggregated_file
+    results = {}
+    for agg_key, agg in config.AGGREGATED_SUBS.items():
+        filename = agg["filename"]
+        title = agg["profile_title"]
+        source_keys = agg["source_keys"]
+        all_cfgs = []
+        seen = set()
+        for sk in source_keys:
+            data = CACHE.get(sk, {})
+            for c in data.get("configs", []):
+                if c not in seen:
+                    seen.add(c)
+                    all_cfgs.append(c)
+        # Сохраняем локально в data/ с игрек стайл шапкой
+        try:
+            save_aggregated_file(str(DATA_DIR), filename, title, all_cfgs)
+            content = generate_aggregated_content(title, all_cfgs)
+            results[filename] = {"content": content, "count": len(all_cfgs), "configs": all_cfgs}
+            logger.info(f"Aggregated {filename}: {len(all_cfgs)} configs")
+        except Exception as e:
+            logger.error(f"aggregated build {filename} error: {e}")
+    return results
+
+async def push_aggregated_to_github(aggregated_results):
+    """Пушит агрегированные подписки в GitHub и возвращает raw ссылки"""
+    if not config.GITHUB_TOKEN or not config.GITHUB_REPO:
+        logger.info("GITHUB_TOKEN/GITHUB_REPO не задан — пуш пропущен (локальные файлы есть)")
+        return {}
+    try:
+        from github_sync import push_aggregated_subscriptions
+        # Подготовим dict path -> content
+        to_push = {}
+        for filename, info in aggregated_results.items():
+            path = f"{config.GITHUB_SUB_PATH}/{filename}" if config.GITHUB_SUB_PATH else filename
+            path = path.lstrip("/")
+            to_push[path] = info["content"]
+        raw_map = await push_aggregated_subscriptions(to_push, config.GITHUB_REPO, config.GITHUB_TOKEN, config.GITHUB_BRANCH)
+        # Сохраняем raw_url в AGGREGATED_CACHE
+        for path, raw_url in raw_map.items():
+            fname = path.split("/")[-1]
+            if fname in aggregated_results:
+                AGGREGATED_CACHE[fname] = {
+                    "raw_url": raw_url,
+                    "count": aggregated_results[fname]["count"],
+                    "content": aggregated_results[fname]["content"]
+                }
+            else:
+                # если путь с папкой
+                for k in aggregated_results:
+                    if k == fname:
+                        AGGREGATED_CACHE[k] = {"raw_url": raw_url, "count": aggregated_results[k]["count"], "content": aggregated_results[k]["content"]}
+        return raw_map
+    except Exception as e:
+        logger.error(f"push aggregated error: {e}")
+        return {}
 
 async def update_cache(categories=None, mode=None):
     global CACHE, LAST_UPDATE
@@ -78,6 +142,22 @@ async def update_cache(categories=None, mode=None):
                 logger.error(f"save error {key}: {e}")
         CACHE[key] = data
     LAST_UPDATE = datetime.now(MSK)
+
+    # === Собираем большие RAW подписки в стиле igareck ===
+    try:
+        agg = build_aggregated_configs()
+        # Обновляем AGGREGATED_CACHE локально (без raw_url пока)
+        for fname, info in agg.items():
+            if fname not in AGGREGATED_CACHE:
+                AGGREGATED_CACHE[fname] = {"count": info["count"], "content": info["content"], "raw_url": None}
+            else:
+                AGGREGATED_CACHE[fname].update({"count": info["count"], "content": info["content"]})
+            # Пробуем залить на GitHub в фоне
+            if config.GITHUB_TOKEN:
+                asyncio.create_task(push_aggregated_to_github(agg))
+    except Exception as e:
+        logger.error(f"aggregated error: {e}")
+
     return result
 
 def get_cached(category_key: str):
@@ -299,6 +379,72 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update_cache()
         await query.message.edit_text(f"✅ Кэш обновлён! {msk_time()}", reply_markup=main_keyboard())
         return
+
+    if data.startswith("raw:"):
+        agg_key = data.split(":",1)[1]
+        if agg_key not in config.AGGREGATED_SUBS:
+            await query.message.reply_text("Неизвестная RAW подписка")
+            return
+        fname = config.AGGREGATED_SUBS[agg_key]["filename"]
+        title = config.AGGREGATED_SUBS[agg_key]["profile_title"]
+        if fname not in AGGREGATED_CACHE or AGGREGATED_CACHE[fname].get("count") is None:
+            await query.message.edit_text("⏳ Собираю RAW подписку...")
+            await update_cache()
+        cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+        raw = get_raw_url(fname)
+        path = DATA_DIR / fname
+        # Показываем шапку файла
+        header_preview = ""
+        if path.exists():
+            header_preview = "\n".join(open(path, encoding="utf-8").read().splitlines()[:12])
+        text = (
+            f"<b>{title}</b>\n"
+            f"📦 Конфигов: <b>{cnt}</b>\n"
+            f"🔗 <b>RAW подписка (вставь 1 ссылкой в клиент):</b>\n<code>{raw}</code>\n\n"
+            f"<i>Шапка как в примере igareck:</i>\n<pre>{header_preview[:800]}</pre>\n"
+            f"🕐 {msk_time()}"
+        )
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📄 Скачать файл", callback_data=f"rawfile:{fname}"),
+             InlineKeyboardButton("📋 Копировать RAW", callback_data=f"rawcopy:{fname}")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="home")]
+        ])
+        await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+        # Авто-отправка файла
+        if path.exists():
+            try:
+                await query.message.reply_document(document=open(path, "rb"), filename=fname, caption=f"{title} • {cnt} configs")
+            except Exception as e:
+                logger.error(e)
+        return
+
+    if data.startswith("rawcopy:"):
+        fname = data.split(":",1)[1]
+        raw = get_raw_url(fname)
+        await query.message.reply_text(f"📋 <b>RAW ссылка:</b>\n<code>{raw}</code>\n\nСкопируй и вставь в Happ/Streisand/Hiddify как URL подписки.", parse_mode=ParseMode.HTML)
+        return
+
+    if data.startswith("rawfile:"):
+        fname = data.split(":",1)[1]
+        path = DATA_DIR / fname
+        if not path.exists():
+            await query.message.reply_text("Файл не найден, обновляю...")
+            await update_cache()
+        if path.exists():
+            # находим title
+            title = fname
+            for k,v in config.AGGREGATED_SUBS.items():
+                if v["filename"]==fname:
+                    title=v["profile_title"]
+            cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+            await query.message.reply_document(document=open(path, "rb"), filename=fname, caption=f"{title} • {cnt} • {msk_time()}")
+            # также base64 если есть
+            b64path = DATA_DIR / fname.replace(".txt","_base64.txt")
+            if b64path.exists():
+                await query.message.reply_document(document=open(b64path,"rb"), filename=b64path.name, caption="Base64 версия")
+        else:
+            await query.message.reply_text("Не удалось собрать файл")
+        return
     
     if data.startswith("get:"):
         key = data.split(":", 1)[1]
@@ -419,6 +565,82 @@ async def message_vless_handler(update: Update, context: ContextTypes.DEFAULT_TY
             else:
                 await update.message.reply_text(f"❌ Нашёл битый VLESS: {reason}")
 
+def get_raw_url(filename: str) -> str:
+    # Если есть закешированный raw_url с GitHub
+    cached = AGGREGATED_CACHE.get(filename, {})
+    if cached.get("raw_url"):
+        return cached["raw_url"]
+    # Иначе строим предполагаемый raw URL (файл уже локально есть, но может ещё не запушен)
+    repo = config.GITHUB_REPO
+    branch = config.GITHUB_BRANCH
+    path = f"{config.GITHUB_SUB_PATH}/{filename}" if config.GITHUB_SUB_PATH else filename
+    path = path.lstrip("/")
+    return f"https://raw.githubusercontent.com/{repo}/{branch}/{path}"
+
+async def raw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # /raw [BLACK_FULL|WHITE_FULL|COMBINED] — отдаёт RAW ссылки
+    arg = (context.args[0].upper() if context.args else "ALL").strip()
+    mapping = {
+        "BLACK": "BLACK_FULL",
+        "BLACK_FULL": "BLACK_FULL",
+        "WHITE": "WHITE_FULL",
+        "WHITE_FULL": "WHITE_FULL",
+        "COMBINED": "COMBINED",
+        "ALL": None
+    }
+    if arg not in mapping:
+        await update.message.reply_text("Используй: /raw black | /raw white | /raw combined | /raw")
+        return
+    if not CACHE:
+        await update.message.reply_text("⏳ Гружу кэш...")
+        await update_cache()
+    # Если запросили всё
+    if mapping[arg] is None:
+        lines = ["<b>🔥 RAW подписки (одна ссылка = вся категория)</b>", ""]
+        for key, agg in config.AGGREGATED_SUBS.items():
+            fname = agg["filename"]
+            title = agg["profile_title"]
+            cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+            raw = get_raw_url(fname)
+            lines.append(f"<b>{title}</b>")
+            lines.append(f"📦 {cnt} конфигов")
+            lines.append(f"🔗 <code>{raw}</code>")
+            lines.append(f"")
+        lines.append("Вставь RAW ссылку в клиент как подписку (Happ/Streisand/Hiddify). Обновляется каждые 30 мин.")
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬛ RAW ЧЁРНЫЕ", callback_data="raw:BLACK_FULL"),
+                 InlineKeyboardButton("⬜ RAW БЕЛЫЕ", callback_data="raw:WHITE_FULL")],
+                [InlineKeyboardButton("🚀 RAW COMBINED", callback_data="raw:COMBINED")]
+            ]))
+        return
+    # Один файл
+    agg_key = mapping[arg]
+    fname = config.AGGREGATED_SUBS[agg_key]["filename"]
+    title = config.AGGREGATED_SUBS[agg_key]["profile_title"]
+    cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+    raw = get_raw_url(fname)
+    # Также отправим сам файл
+    path = DATA_DIR / fname
+    text = (
+        f"<b>{title}</b>\n"
+        f"📦 Конфигов: <b>{cnt}</b>\n"
+        f"🔗 RAW подписка:\n<code>{raw}</code>\n\n"
+        f"Нажми чтобы скопировать, вставь в клиент как URL подписки.\n"
+        f"🕐 Обновлено: {msk_time()}\n"
+        f"Файл также ниже как документ (на случай если RAW ещё не запушился)."
+    )
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Скопировать RAW", callback_data=f"rawcopy:{fname}")],
+            [InlineKeyboardButton("📄 Получить файл", callback_data=f"rawfile:{fname}")],
+        ]))
+    if path.exists():
+        try:
+            await update.message.reply_document(document=open(path, "rb"), filename=fname, caption=f"{title} • {cnt} configs • {msk_time()}")
+        except Exception as e:
+            logger.error(f"raw file send error: {e}")
+
 async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not CACHE:
         await update.message.reply_text("Кэш пуст. Делаю /update...")
@@ -431,6 +653,13 @@ async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name = config.SOURCES.get(k, {}).get("name", k)[:30]
         lines.append(f"• {k}: <b>{cnt}</b> — {name}")
     lines.append(f"\n<b>Всего: {total} VLESS</b>")
+    # Добавим RAW
+    lines.append("\n<b>🔥 RAW (агрегированные):</b>")
+    for key, agg in config.AGGREGATED_SUBS.items():
+        fname = agg["filename"]
+        cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+        raw = get_raw_url(fname)
+        lines.append(f"• {fname}: <b>{cnt}</b> — <code>{raw}</code>")
     await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
 
 async def sub_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -487,6 +716,14 @@ def main():
     app.add_handler(CommandHandler("check", check_cmd))
     app.add_handler(CommandHandler("stats", stats_cmd))
     app.add_handler(CommandHandler("sub", sub_cmd))
+    app.add_handler(CommandHandler("raw", raw_cmd))
+    # алиасы для удобства
+    async def raw_black_alias(u,c): c.args = ["BLACK_FULL"]; await raw_cmd(u,c)
+    async def raw_white_alias(u,c): c.args = ["WHITE_FULL"]; await raw_cmd(u,c)
+    async def raw_combined_alias(u,c): c.args = ["COMBINED"]; await raw_cmd(u,c)
+    app.add_handler(CommandHandler("raw_black", raw_black_alias))
+    app.add_handler(CommandHandler("raw_white", raw_white_alias))
+    app.add_handler(CommandHandler("raw_combined", raw_combined_alias))
     
     # Групповые и одиночные команды
     app.add_handler(CommandHandler("black", get_command_factory("black_all")))

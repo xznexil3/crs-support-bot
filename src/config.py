@@ -11,6 +11,13 @@ UPDATE_INTERVAL = int(os.getenv("UPDATE_INTERVAL", "30"))
 PUBLIC_URL = os.getenv("PUBLIC_URL", "")
 PORT = int(os.getenv("PORT", "8080"))
 
+# === GitHub RAW публикация ===
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", os.getenv("GH_TOKEN", ""))  # твой ghp_... для пуша подписок
+GITHUB_REPO = os.getenv("GITHUB_REPO", "xznexil3/vless-parser-bot")  # куда пушить
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+# Папка в репозитории куда класть сгенерированные подписки (raw ссылка будет .../branch/<path>)
+GITHUB_SUB_PATH = os.getenv("GITHUB_SUB_PATH", "")  # пусто = в корень, или "subs" / "subscription"
+
 # === Источники GitHub ===
 # Основной репозиторий для РФ - igareck/vpn-configs-for-russia
 SOURCES = {
@@ -90,6 +97,36 @@ GROUPS = {
     "all": ["black_all", "black_mobile", "white_cidr_all", "white_cidr_checked", "white_mobile", "ss_black"],
 }
 
+# === АГРЕГИРОВАННЫЕ RAW ПОДПИСКИ (одна большая ссылка) ===
+# Каждая собирается из указанных категорий, кладётся в GitHub как один файл,
+# и отдаётся как raw.githubusercontent.com/.../FILE.txt — вставляешь 1 ссылку в клиент.
+AGGREGATED_SUBS = {
+    "BLACK_FULL": {
+        "filename": "BLACK_FULL.txt",  # будет https://raw.githubusercontent.com/xznexil3/vless-parser-bot/main/BLACK_FULL.txt
+        "profile_title": "🏴 ЧЕРНЫЕ СПИСКИ 🏴 BLACK LISTS | Полная • Full | SS, Hy2, Vmess, Trojan",
+        "source_keys": ["black_all", "black_mobile", "ss_black"],
+        "description": "Все чёрные списки — одна большая подписка (как в примере igareck)",
+    },
+    "WHITE_FULL": {
+        "filename": "WHITE_FULL.txt",
+        "profile_title": "🏳️ БЕЛЫЕ СПИСКИ 🏳️ WHITE LISTS | Полная • Full | CIDR",
+        "source_keys": ["white_cidr_all", "white_cidr_checked", "white_mobile"],
+        "description": "Все белые CIDR — одна подписка для жёстких ТСПУ",
+    },
+    "COMBINED": {
+        "filename": "COMBINED.txt",
+        "profile_title": "🌐 COMBINED | Чёрные + Белые | All-in-One",
+        "source_keys": ["black_all", "black_mobile", "ss_black", "white_cidr_all", "white_cidr_checked", "white_mobile"],
+        "description": "Всё вместе — чёрные + белые в одном файле",
+    },
+    "UNIVERSAL_PLUS": {
+        "filename": "UNIVERSAL_PLUS.txt",
+        "profile_title": "🌍 UNIVERSAL PLUS | Все источники + Мировые VLESS",
+        "source_keys": ["black_all", "black_mobile", "ss_black", "white_cidr_all", "white_cidr_checked", "white_mobile", "universal"],
+        "description": "Все РФ + мировые VLESS (10k+) — максимальная подписка",
+    },
+}
+
 # Тексты
 WELCOME_TEXT = """
 🛰️ <b>VLESS Парсер Бот</b> — рабочие конфиги для РФ
@@ -106,22 +143,29 @@ WELCOME_TEXT = """
 HELP_TEXT = """
 <b>📖 Помощь — как пользоваться</b>
 
-<b>Команды:</b>
+<b>🔥 RAW подписки (одна ссылка — вся категория):</b>
+/raw — все RAW ссылки (чёрные/белые/combined)
+/raw_black — ЧЁРНЫЕ FULL (SS, Hy2, Vmess, Trojan, VLESS) — шапка как у igareck
+/raw_white — БЕЛЫЕ FULL (CIDR)
+/raw_combined — Всё вместе
+
+<b>Отдельные категории:</b>
 /black — Чёрные списки (VLESS, 91-150 шт)
 /black_mobile — 150 лучших для телефона
 /white — Белые списки (все варианты CIDR)
 /white_cidr — Белые CIDR ALL (~30 шт)
 /white_checked — VK/YA/CDN/Beeline (~10 шт, самые надёжные)
 /white_mobile — Белые для телефона
-/all — Всё вместе
+/all — Всё вместе (групповой файл)
 /sources — Показать все источники GitHub
 /check — Проверка твоего vless:// ссылку
 /update — Обновить кэш вручную
 /sub — Мои подписки (файлы)
+/stats — Статистика
 
-<b>Как подключить:</b>
-1. Скопируй подписку (base64-ссылку или raw-ссылку)
-2. Вставь в клиент: <b>Happ / Streisand / v2rayNG / NekoRay / Throne / Hiddify</b>
+<b>Как подключить RAW:</b>
+1. Скопируй RAW ссылку: <code>https://raw.githubusercontent.com/.../BLACK_FULL.txt</code>
+2. Вставь в клиент как <b>URL подписки</b>: <b>Happ / Streisand / v2rayNG / NekoRay / Throne / Hiddify</b>
 3. Обнови подписку в клиенте → выбери сервер с минимальной задержкой → Connect
 
 <b>Рекомендуемые клиенты:</b>
