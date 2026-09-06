@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLESS Парсер — Демo подписок</title>
+<style>
+*{box-sizing:border-box;font-family:Inter,system-ui,Arial,sans-serif}
+body{margin:0;background:#0f1115;color:#e6e6e6}
+.wrap{max-width:900px;margin:0 auto;padding:24px}
+h1{font-size:28px;margin:8px 0}
+.sub{color:#9aa3b2}
+.card{background:#181b22;border:1px solid #242836;border-radius:16px;padding:18px;margin:16px 0}
+.card h2{margin:0 0 6px 0;font-size:18px}
+.card p{margin:6px 0;color:#aab1c0;line-height:1.5}
+.badge{display:inline-block;background:#1e7bff;color:#fff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;margin-right:6px}
+.btn{display:inline-block;background:#1e7bff;color:#fff;padding:10px 14px;border-radius:10px;text-decoration:none;font-weight:600;margin:8px 8px 0 0}
+.btn.ghost{background:#242836;color:#e6e6e6}
+code{background:#242836;padding:2px 6px;border-radius:6px;font-size:13px;word-break:break-all}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}
+.stat{background:#0f1115;border:1px solid #242836;border-radius:12px;padding:10px 14px}
+.stat b{font-size:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🛰️ VLESS Парсер Бот</h1>
+<p class="sub">Парсер рабочих VLESS Reality с GitHub для <b>чёрных</b> и <b>белых</b> списков. Отдаёт подписки в 2 форматах: plain и base64.</p>
+
+<div class="stats">
+<div class="stat"><div>⬛ Чёрные VLESS</div><b>91</b> конфигов</div>
+<div class="stat"><div>📱 Чёрные Mobile</div><b>136</b> конфигов</div>
+<div class="stat"><div>⬜ Белые CIDR ALL</div><b>25</b> конфигов</div>
+<div class="stat"><div>⬜ Белые VK/YA</div><b>20</b> конфигов</div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h2>⬛ Чёрные списки</h2>
+<p><span class="badge">VLESS Reality</span> Полный туннель — весь трафик через VPN. Для YouTube, Discord, X, ChatGPT.</p>
+<p>Источник: <code>igareck/BLACK_VLESS_RUS.txt</code></p>
+<a class="btn" href="#" onclick="alert('Запусти бота — файлы появятся в data/black_all.txt')">📄 Получить .txt</a>
+<a class="btn ghost" href="#">📋 base64</a>
+</div>
+<div class="card">
+<h2>⬜ Белые списки CIDR</h2>
+<p><span class="badge">White List</span> Обход жёстких ТСПУ — работают только белые IP (VK, Yandex, Beeline, CDNVideo).</p>
+<p>Источник: <code>WHITE-CIDR-RU-all.txt</code> + <code>checked.txt</code></p>
+<a class="btn" href="#">📄 Получить .txt</a>
+<a class="btn ghost" href="#">📋 base64</a>
+</div>
+</div>
+
+<div class="card">
+<h2>🤖 Команды бота</h2>
+<p><code>/start</code> — меню &nbsp; <code>/black</code> — чёрные &nbsp; <code>/white</code> — белые &nbsp; <code>/white_checked</code> — VK/YA &nbsp; <code>/all</code> — всё &nbsp; <code>/check vless://...</code> — проверка</p>
+<p><code>/update</code> — обновить кэш &nbsp; <code>/stats</code> — статистика &nbsp; <code>/sources</code> — источники</p>
+</div>
+
+<div class="card">
+<h2>📱 Как подключить</h2>
+<ol style="line-height:1.7;color:#cbd5e1">
+<li>В боте нажми <b>⬛ Чёрные</b> или <b>⬜ Белые</b> → <b>📄 Получить файл</b></li>
+<li>Скопируй содержимое <code>*_base64.txt</code> или сам файл <code>*.txt</code></li>
+<li>Вставь в клиент: <b>Happ / Streisand / v2rayNG / Hiddify / Throne / NekoRay</b> → <b>Добавить подписку из буфера</b></li>
+<li>Обнови подписку → выбери сервер с меньшей задержкой → Connect</li>
+</ol>
+<p style="background:#1a1f2e;border-left:3px solid #1e7bff;padding:10px 12px;border-radius:8px">💡 <b>Совет:</b> для белых списков бери <b>VK/YA/CDN</b> (самые живучие). Для чёрных — <b>black_mobile</b> (топ-150). Обновляй подписку каждые 6-12 часов.</p>
+</div>
+
+<div class="card">
+<h2>🔗 Источники GitHub</h2>
+<p>Основной: <b>igareck/vpn-configs-for-russia</b> (8.5k ⭐) — обновляется каждые 15-30 мин через GitHub Actions.<br>Fallback: barry-far/V2ray-Config, 0xRadikal/Free-v2ray-Configs</p>
+<p>Бот парсит <code>raw.githubusercontent.com</code>, проверяет UUID/host/port, дедуплицирует и генерирует подписки с заголовками <code># profile-title</code> и <code># profile-update-interval</code>.</p>
+</div>
+
+<p class="sub" style="text-align:center;margin-top:18px">Готово к деплою: Docker, polling, автообновление каждые 30 мин, постинг в канал. Вставь <code>BOT_TOKEN</code> в <code>.env</code> и запускай <code>python src/bot.py</code></p>
+</div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  vless-parser-bot:
+    build: .
+    container_name: vless-parser-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
