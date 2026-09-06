@@ -1,6 +1,6 @@
 # profile-title: 🏴 ЧЕРНЫЕ СПИСКИ 🏴 BLACK LISTS | Полная • Full | SS, Hy2, Vmess, Trojan
 # profile-update-interval: 1
-# Date/Time: 2026-09-06 / 17:03 (Moscow)
+# Date/Time: 2026-09-06 / 17:04 (Moscow)
 # Количество: 192
 # For more info and VPN-configs - visit: www.github.com/igareck/vpn-configs-for-russia
 
