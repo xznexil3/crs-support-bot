@@ -73,6 +73,27 @@ def save_aggregated_file(base_dir: str, filename: str, profile_title: str, confi
         f.write(b64)
     return path, b64_path, content, b64
 
+CHUNK_SIZE = 300
+
+def chunk_configs(configs: list, size: int = CHUNK_SIZE):
+    for i in range(0, len(configs), size):
+        yield configs[i:i+size]
+
+def save_aggregated_chunks(base_dir: str, filename: str, profile_title: str, configs: list, chunk_size: int = CHUNK_SIZE):
+    """Делит configs по chunk_size и сохраняет FULL.txt, FULL_1.txt, FULL_2.txt ... Все в стиле Crimson."""
+    os.makedirs(base_dir, exist_ok=True)
+    base_name = filename.replace(".txt", "")
+    # Сначала сохраняем полный (для совместимости)
+    full_path, full_b64, full_content, full_b64c = save_aggregated_file(base_dir, filename, profile_title, configs)
+    chunks = list(chunk_configs(configs, chunk_size))
+    chunk_infos = []
+    for idx, chunk in enumerate(chunks, 1):
+        chunk_title = f"{profile_title} — {idx}"
+        chunk_filename = f"{base_name}_{idx}.txt"
+        chunk_path, chunk_b64_path, chunk_content, chunk_b64 = save_aggregated_file(base_dir, chunk_filename, chunk_title, chunk)
+        chunk_infos.append((chunk_filename, chunk_title, len(chunk), chunk_content))
+    return (full_path, full_b64, full_content, full_b64c, chunk_infos)
+
 def generate_qr_bytes(text: str) -> bytes:
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
     qr.add_data(text)
