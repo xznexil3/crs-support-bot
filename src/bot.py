@@ -242,7 +242,7 @@ def get_raw_url(filename: str) -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id if update.effective_user else None
     await update.message.reply_text(
-        "Клавиатура обновлена — жми «Главное меню» внизу",
+        f"{config.PREMIUM['sparkles']} Клавиатура обновлена — жми «Главное меню» внизу {config.PREMIUM['thumbsup']}",
         reply_markup=REPLY_MENU
     )
     await update.message.reply_text(
@@ -288,7 +288,7 @@ async def send_chunk_file(query, fname, back_data="home"):
                 break
         cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
         raw = get_raw_url(fname)
-        await query.message.reply_text(f"<b>{title}</b>\n<code>{raw}</code>\nКонфигов: <b>{cnt}</b>", parse_mode=ParseMode.HTML,
+        await query.message.reply_text(f"{config.PREMIUM['diamond']} <b>{title}</b> {config.PREMIUM['sparkles']}\n<code>{raw}</code>\nКонфигов: <b>{cnt}</b> {config.PREMIUM['fire_crimson']}", parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Скачать файл", callback_data=f"rawfile:{fname}"), InlineKeyboardButton("Копировать ссылку", callback_data=f"rawcopy:{fname}")],[InlineKeyboardButton("‹ Назад", callback_data=back_data)]]))
         try:
             await query.message.reply_document(document=open(path, "rb"), filename=fname, caption=f"{title} • {cnt}")
@@ -310,10 +310,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "profile":
         user = query.from_user
         text = (
-            f"<b>Мой профиль</b>\n\n"
-            f"ID: <code>{user.id}</code>\n"
+            f"{config.PREMIUM['thumbsup']} <b>Мой профиль</b> {config.PREMIUM['sparkles']}\n\n"
+            f"{config.PREMIUM['computer']} ID: <code>{user.id}</code>\n"
             f"Username: @{user.username or '—'}\n"
-            f"Имя: {user.first_name or '—'}"
+            f"{config.PREMIUM['heart']} Имя: {user.first_name or '—'}"
         )
         await query.message.reply_text(text, parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ Назад", callback_data="home")]]))
@@ -328,7 +328,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not config.is_admin(uid):
             await query.answer("Только для админа", show_alert=True)
             return
-        await query.message.edit_text("<b>Админ панель</b>\nВыбери действие:", parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+        await query.message.edit_text(f"{config.PREMIUM['diamond']} <b>Админ панель</b> {config.PREMIUM['sparkles']}\nВыбери действие:", parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
         return
 
     if data in ("admin_stats", "admin_refresh", "admin_sources"):
@@ -342,24 +342,24 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data == "admin_stats":
             if not CACHE:
                 await update_cache()
-            lines = [f"<b>Статистика • {datetime.now(MSK).strftime('%d.%m %H:%M')}</b>"]
+            lines = [f"{config.PREMIUM['computer']} <b>Статистика • {datetime.now(MSK).strftime('%d.%m %H:%M')}</b> {config.PREMIUM['sparkles']}"]
             total=0
             for k,d in CACHE.items():
                 cnt=len(d.get("configs",[])); total+=cnt
                 lines.append(f"• {k}: <b>{cnt}</b>")
-            lines.append(f"\nВсего: <b>{total}</b>")
+            lines.append(f"\n{config.PREMIUM['fire_crimson']} Всего: <b>{total}</b> {config.PREMIUM['diamond']}")
             for fname, info in AGGREGATED_CACHE.items():
                 if info.get("is_chunk"):
                     continue
                 # show base + protocol files
-                lines.append(f"• {fname}: <b>{info.get('count','?')}</b>")
+                lines.append(f"{config.PREMIUM['diamond']} • {fname}: <b>{info.get('count','?')}</b>")
             await query.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ Назад", callback_data="admin_panel")]]))
             return
         if data == "admin_refresh":
-            await query.message.edit_text("Обновляю кэш…")
+            await query.message.edit_text(f"{config.PREMIUM['lightning']} Обновляю кэш… {config.PREMIUM['sparkles']}")
             await update_cache()
-            await query.message.edit_text(f"Готово • {datetime.now(MSK).strftime('%H:%M')}", reply_markup=admin_keyboard())
+            await query.message.edit_text(f"{config.PREMIUM['thumbsup']} Готово • {datetime.now(MSK).strftime('%H:%M')} {config.PREMIUM['fire_crimson']}", reply_markup=admin_keyboard())
             return
 
     if data in ("sources", "stats", "refresh"):
@@ -382,9 +382,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update_cache()
         total = AGGREGATED_CACHE.get(base, {}).get("count", "?")
         text = (
-            f"<b>⬜ Белые списки</b> — для жёстких ТСПУ (VK, Яндекс)\n"
-            f"Всего: <b>{total}</b> • делю по 300\n\n"
-            f"Выбери протокол (режим):"
+            f"{config.PREMIUM['ghost']} <b>Белые списки</b> — для жёстких ТСПУ (VK, Яндекс) {config.PREMIUM['sparkles']}\n"
+            f"Всего: <b>{total}</b> • делю по 300 {config.PREMIUM['diamond']}\n\n"
+            f"{config.PREMIUM['lightning']} Выбери протокол (режим):"
         )
         await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=protocol_keyboard(agg_key))
         return
@@ -397,9 +397,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update_cache()
         total = AGGREGATED_CACHE.get(base, {}).get("count", "?")
         text = (
-            f"<b>⬛ Чёрные списки</b> — весь трафик через VPN\n"
-            f"Всего: <b>{total}</b> • делю по 300\n\n"
-            f"Выбери протокол (режим):"
+            f"{config.PREMIUM['shield']} <b>Чёрные списки</b> — весь трафик через VPN {config.PREMIUM['fire_crimson']}\n"
+            f"Всего: <b>{total}</b> • делю по 300 {config.PREMIUM['diamond']}\n\n"
+            f"{config.PREMIUM['lightning']} Выбери протокол (режим):"
         )
         await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=protocol_keyboard(agg_key))
         return
@@ -412,9 +412,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update_cache()
         total = AGGREGATED_CACHE.get(base, {}).get("count", "?")
         text = (
-            f"<b>📦 Полный список</b> — все белые + чёрные\n"
-            f"Всего: <b>{total}</b> • делю по 300\n\n"
-            f"Выбери протокол (режим):"
+            f"{config.PREMIUM['diamond']} <b>Полный список</b> — все белые + чёрные {config.PREMIUM['sparkles']}\n"
+            f"Всего: <b>{total}</b> • делю по 300 {config.PREMIUM['fire_crimson']}\n\n"
+            f"{config.PREMIUM['lightning']} Выбери протокол (режим):"
         )
         await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=protocol_keyboard(agg_key))
         return
@@ -448,7 +448,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cnt = AGGREGATED_PROTO_COUNTS.get(base, {}).get(proto, 0)
         if cnt == 0:
             await query.message.edit_text(
-                f"<b>{display_title}</b>\nПока нет конфигов для <b>{PROTOCOL_LABELS.get(proto, proto)}</b> в этом списке.",
+                f"{config.PREMIUM['warning']} <b>{display_title}</b>\nПока нет конфигов для <b>{PROTOCOL_LABELS.get(proto, proto)}</b> в этом списке. {config.PREMIUM['cross']}",
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ К протоколам", callback_data=agg_key.lower().replace("_full",""))]])
             )
@@ -459,10 +459,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if back_target not in ("white","black","full"):
             back_target = "home"
         text = (
-            f"<b>{display_title}</b>\n"
-            f"Конфигов: <b>{cnt}</b> • делю по 300\n"
+            f"{config.PREMIUM['diamond']} <b>{display_title}</b> {config.PREMIUM['sparkles']}\n"
+            f"Конфигов: <b>{cnt}</b> • делю по 300 {config.PREMIUM['fire_crimson']}\n"
             f"Файл: <code>{raw}</code>\n\n"
-            f"Выбери пакет:"
+            f"{config.PREMIUM['lightning']} Выбери пакет:"
         )
         if chunks:
             kb = chunks_keyboard(fname, chunks, back_data=back_target, back_label="‹ К протоколам")
@@ -472,7 +472,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("Скачать файл", callback_data=f"rawfile:{fname}"), InlineKeyboardButton("Копировать", callback_data=f"rawcopy:{fname}")],
                 [InlineKeyboardButton("‹ К протоколам", callback_data=back_target)]
             ])
-            text = f"<b>{display_title}</b>\n<code>{raw}</code>\nКонфигов: <b>{cnt}</b>"
+            text = f"{config.PREMIUM['diamond']} <b>{display_title}</b> {config.PREMIUM['sparkles']}\n<code>{raw}</code>\nКонфигов: <b>{cnt}</b> {config.PREMIUM['fire_crimson']}"
         await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
         return
 
@@ -516,7 +516,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
             await query.message.reply_document(document=open(path, "rb"), filename=fname, caption=f"{title} • {cnt}")
         else:
-            await query.message.reply_text("Файл не найден")
+            await query.message.reply_text(f"{config.PREMIUM['cross']} Файл не найден {config.PREMIUM['warning']}")
         return
 
     if data.startswith("raw:"):
@@ -554,9 +554,9 @@ async def message_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             ok, reason = is_valid_vless(link)
             info = parse_vless_info(link)
             if ok:
-                await update.message.reply_text(f"🔍 VLESS: {info.get('remark')}\n{info.get('host')}:{info.get('port')} • валиден", reply_markup=main_keyboard(update.effective_user.id))
+                await update.message.reply_text(f"{config.PREMIUM['lightning']} VLESS: {info.get('remark')}\n{info.get('host')}:{info.get('port')} • валиден {config.PREMIUM['thumbsup']}", reply_markup=main_keyboard(update.effective_user.id))
             else:
-                await update.message.reply_text(f"❌ Битый VLESS: {reason}")
+                await update.message.reply_text(f"{config.PREMIUM['cross']} Битый VLESS: {reason} {config.PREMIUM['warning']}")
 
 def get_raw_url(filename: str) -> str:
     cached = AGGREGATED_CACHE.get(filename, {})

@@ -27,6 +27,32 @@ GITHUB_SUB_PATH = os.getenv("GITHUB_SUB_PATH", "")
 def is_admin(uid: int) -> bool:
     return uid in ADMIN_IDS
 
+# === Premium эмодзи (custom_emoji) — для @wtfparsbot ===
+# Бот может отправлять их бесплатно, но анимация покажется только если у бота куплен collectible username на Fragment.
+# До покупки — показывается fallback Unicode внутри тега, всё работает без падений.
+# ID проверены через getCustomEmojiStickers (200 OK)
+PREMIUM = {
+    "fire_crimson": '<tg-emoji emoji-id="5987683322615041517">🔥</tg-emoji>',  # CrimsonEmoji — фирменный огонь Crimson
+    "fire": '<tg-emoji emoji-id="5424972470023104089">🔥</tg-emoji>',  # NewsEmoji
+    "rocket": '<tg-emoji emoji-id="5445284980978621387">🚀</tg-emoji>',  # RestrictedEmoji
+    "sparkles": '<tg-emoji emoji-id="5325547803936572038">✨</tg-emoji>',
+    "diamond": '<tg-emoji emoji-id="5427168083074628963">💎</tg-emoji>',
+    "shield": '<tg-emoji emoji-id="5251203410396458957">🛡</tg-emoji>',
+    "lightning": '<tg-emoji emoji-id="5456140674028019486">⚡️</tg-emoji>',
+    "ghost": '<tg-emoji emoji-id="5371017798065592581">👻</tg-emoji>',
+    "heart": '<tg-emoji emoji-id="5377860677400536988">❤️</tg-emoji>',
+    "black_heart": '<tg-emoji emoji-id="5449692618151695997">🖤</tg-emoji>',
+    "thumbsup": '<tg-emoji emoji-id="5368324170671202286">👍</tg-emoji>',
+    "warning": '<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji>',
+    "cross": '<tg-emoji emoji-id="5210952531676504517">❌</tg-emoji>',
+    "computer": '<tg-emoji emoji-id="5877565553761062314">💻</tg-emoji>',
+    "crystal": '<tg-emoji emoji-id="5471952986970267163">💎</tg-emoji>',  # Restricted diamond
+}
+
+def pe(name: str, fallback: str = "") -> str:
+    """Быстрый доступ к premium emoji с fallback"""
+    return PREMIUM.get(name) or fallback
+
 # === Источники ===
 # igareck — база, + дополнительные подписки против БС
 SOURCES = {
@@ -200,38 +226,38 @@ AGGREGATED_SUBS = {
 # COMBINED = FULL
 AGGREGATED_SUBS["COMBINED"] = AGGREGATED_SUBS["FULL"]
 
-WELCOME_TEXT = """<b>Free VPN • Crimson</b> — рабочие автообновляемые конфиги для вашего «суверенного» интернета.
+WELCOME_TEXT = f"""{PREMIUM['fire_crimson']} <b>Free VPN • Crimson</b> — рабочие автообновляемые конфиги для вашего «суверенного» интернета.
 
-• Два режима:
-[⬛] Чёрные — весь трафик через VPN
-[⬜] Белые — для жёстких ТСПУ, когда работает только VK / Яндекс
+{PREMIUM['black_heart']} Два режима:
+{PREMIUM['shield']} <b>Чёрные</b> — весь трафик через VPN
+{PREMIUM['ghost']} <b>Белые</b> — для жёстких ТСПУ, когда работает только VK / Яндекс
 
-• Режимы протоколов внутри каждого списка:
-<b>VLESS</b> · <b>Trojan</b> · <b>Shadowsocks</b> · <b>VMess</b> · <b>Hysteria2</b> — выбери нужный клиент
+{PREMIUM['sparkles']} Режимы протоколов внутри каждого списка:
+{PREMIUM['lightning']} <b>VLESS</b> · {PREMIUM['shield']} <b>Trojan</b> · {PREMIUM['ghost']} <b>Shadowsocks</b> · {PREMIUM['computer']} <b>VMess</b> · {PREMIUM['rocket']} <b>Hysteria2</b>
 
-• Выбери кнопку:
+{PREMIUM['diamond']} Выбери кнопку:
 • <b>Полный список</b> — одна большая ссылка (делим по 300)
 • <b>Белые / Чёрные</b> — выбери протокол, получи пакеты по 300
 """
 
-HELP_TEXT = """<b>Free VPN • Crimson — помощь</b>
+HELP_TEXT = f"""<b>{PREMIUM['fire_crimson']} Free VPN • Crimson — помощь</b> {PREMIUM['sparkles']}
 
 Нажми кнопку в меню:
 
-<b>Мой профиль</b> — твой ID
-<b>Белые списки</b> — для ТСПУ: выбор протокола → пакеты по 300 (VLESS/Trojan/SS/VMess/Hy2)
-<b>Чёрные списки</b> — классический VPN: выбор протокола → пакеты по 300
-<b>Полный список</b> — всё вместе: выбор протокола → пакеты по 300
-<b>Помощь</b> — это окно
+{PREMIUM['thumbsup']} <b>Мой профиль</b> — твой ID
+{PREMIUM['ghost']} <b>Белые списки</b> — для ТСПУ: выбор протокола → пакеты по 300 (VLESS/Trojan/SS/VMess/Hy2)
+{PREMIUM['shield']} <b>Чёрные списки</b> — классический VPN: выбор протокола → пакеты по 300
+{PREMIUM['diamond']} <b>Полный список</b> — всё вместе: выбор протокола → пакеты по 300
+{PREMIUM['computer']} <b>Помощь</b> — это окно
 
-<b>Протоколы (режимы):</b>
-• <b>VLESS</b> — основной, Reality, работает везде
-• <b>Trojan</b> — для Sing-box / Clash
-• <b>Shadowsocks</b> — SS
-• <b>VMess</b> — старый V2Ray
-• <b>Hysteria2 / Hy2</b> — скоростной QUIC
+<b>{PREMIUM['rocket']} Протоколы (режимы):</b>
+• {PREMIUM['lightning']} <b>VLESS</b> — основной, Reality, работает везде
+• {PREMIUM['shield']} <b>Trojan</b> — для Sing-box / Clash
+• {PREMIUM['ghost']} <b>Shadowsocks</b> — SS
+• {PREMIUM['computer']} <b>VMess</b> — старый V2Ray
+• {PREMIUM['rocket']} <b>Hysteria2 / Hy2</b> — скоростной QUIC {PREMIUM['sparkles']}
 
-<b>Как подключить:</b>
+<b>{PREMIUM['diamond']} Как подключить:</b>
 1. Нажми <b>Белые / Чёрные / Полный</b> → выбери протокол → выбери пакет (1..N по 300)
 2. Скопируй ссылку вида <code>https://raw.githubusercontent.com/.../FULL_VLESS_1.txt</code>
 3. Вставь как <b>URL подписки</b> в Happ / Streisand / v2rayNG / Hiddify / Throne / NekoBox
@@ -240,10 +266,13 @@ HELP_TEXT = """<b>Free VPN • Crimson — помощь</b>
 Клиенты: <b>Happ, Streisand, v2rayNG, Hiddify, Throne, NekoRay, Karing, Exclave</b>
 Автообновление — раз в час. Все файлы по 300 для стабильной загрузки.
 
-Вопросы — @wtfparsbot
+{PREMIUM['heart']} Вопросы — @wtfparsbot {PREMIUM['black_heart']}
 """
 
-SOURCES_TEXT = """<b>Free VPN • Crimson — источники</b>
+SOURCES_TEXT = f"""<b>{PREMIUM['diamond']} Free VPN • Crimson — источники</b> {PREMIUM['sparkles']}
 Основное: igareck, zieng2, etoneya, ByeWhiteLists 2.0, CID, wrtrmmu, Vercel, VPN bolt + зеркала.
 Полный список зеркал — в конфиге бота (src/config.py → SOURCES).
+
+{PREMIUM['computer']} Авто-очистка: {PREMIUM['warning']} приватные IP, {PREMIUM['cross']} битые UUID/порт, дубликаты — удаляются.
+{PREMIUM['thumbsup']} Всё делится по протоколам и по 300.
 """
