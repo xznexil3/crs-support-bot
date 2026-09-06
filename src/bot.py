@@ -36,34 +36,35 @@ def msk_time():
 
 # ---------- Helpers ----------
 
-def main_keyboard():
-    return InlineKeyboardMarkup([
-        # --- 🔥 RAW — одна ссылка как у igareck ---
-        [InlineKeyboardButton("🔥 RAW ЧЁРНЫЕ FULL", callback_data="raw:BLACK_FULL"),
-         InlineKeyboardButton("🔥 RAW БЕЛЫЕ FULL", callback_data="raw:WHITE_FULL")],
-        [InlineKeyboardButton("🚀 RAW COMBINED", callback_data="raw:COMBINED"),
-         InlineKeyboardButton("🌍 RAW UNIVERSAL PLUS", callback_data="raw:UNIVERSAL_PLUS")],
-        # --- 📂 Отдельные категории ---
-        [InlineKeyboardButton("⬛ Чёрные VLESS", callback_data="get:black_all"),
-         InlineKeyboardButton("📱 Чёрные Mobile", callback_data="get:black_mobile")],
-        [InlineKeyboardButton("⬜ Белые CIDR ALL", callback_data="get:white_cidr_all"),
-         InlineKeyboardButton("⬜ Белые VK/YA", callback_data="get:white_cidr_checked")],
-        [InlineKeyboardButton("📱 Белые Mobile", callback_data="get:white_mobile"),
-         InlineKeyboardButton("🔐 Shadowsocks", callback_data="get:ss_black")],
-        # --- Сервис ---
-        [InlineKeyboardButton("📊 Статистика", callback_data="stats"),
-         InlineKeyboardButton("🔗 Источники", callback_data="sources"),
-         InlineKeyboardButton("❓ Помощь", callback_data="help")],
-        [InlineKeyboardButton("🔄 Обновить кэш", callback_data="refresh")],
-    ])
+def main_keyboard(user_id: int = None):
+    # Минималистичное главное меню: Мой профиль / Белые / Чёрные / Полный / Помощь
+    kb = [
+        [InlineKeyboardButton("👤 Мой профиль", callback_data="profile")],
+        [InlineKeyboardButton("⬜ Белые списки", callback_data="white"),
+         InlineKeyboardButton("⬛ Чёрные списки", callback_data="black")],
+        [InlineKeyboardButton("📦 Полный список", callback_data="full")],
+        [InlineKeyboardButton("❓ Помощь", callback_data="help")],
+    ]
+    # Админ видит доп. кнопки
+    if user_id and config.is_admin(user_id):
+        kb.append([InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
+                   InlineKeyboardButton("🔄 Обновить кэш", callback_data="admin_refresh")])
+    return InlineKeyboardMarkup(kb)
 
 def category_keyboard(category_key: str):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📋 Скопировать base64", callback_data=f"copy:{category_key}"),
-         InlineKeyboardButton("📄 Получить файл .txt", callback_data=f"file:{category_key}")],
-        [InlineKeyboardButton("🔍 Показать 5 примеров", callback_data=f"preview:{category_key}"),
-         InlineKeyboardButton("📷 QR подписки", callback_data=f"qr:{category_key}")],
-        [InlineKeyboardButton("⬅️ Назад", callback_data="home")],
+        [InlineKeyboardButton("Получить файл", callback_data=f"file:{category_key}"),
+         InlineKeyboardButton("Копировать", callback_data=f"copy:{category_key}")],
+        [InlineKeyboardButton("Показать 5", callback_data=f"preview:{category_key}"),
+         InlineKeyboardButton("QR", callback_data=f"qr:{category_key}")],
+        [InlineKeyboardButton("‹ Назад", callback_data="home")],
+    ])
+
+def raw_keyboard(fname: str):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("Скопировать ссылку", callback_data=f"rawcopy:{fname}"),
+         InlineKeyboardButton("Скачать файл", callback_data=f"rawfile:{fname}")],
+        [InlineKeyboardButton("‹ Назад", callback_data="home")],
     ])
 
 AGGREGATED_CACHE = {}  # {filename: {"content": str, "count": int, "raw_url": str}}
@@ -201,10 +202,11 @@ def format_category_message(data: dict) -> str:
 # ---------- Handlers ----------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id if update.effective_user else None
     await update.message.reply_text(
         config.WELCOME_TEXT,
         parse_mode=ParseMode.HTML,
-        reply_markup=main_keyboard()
+        reply_markup=main_keyboard(uid)
     )
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -367,82 +369,106 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    uid = query.from_user.id if query.from_user else 0
     
     if data == "home":
-        await query.message.edit_text(config.WELCOME_TEXT, parse_mode=ParseMode.HTML, reply_markup=main_keyboard())
+        await query.message.edit_text(config.WELCOME_TEXT, parse_mode=ParseMode.HTML, reply_markup=main_keyboard(uid))
+        return
+    if data == "profile":
+        user = query.from_user
+        total = sum(len(v.get("configs", [])) for v in CACHE.values()) if CACHE else 0
+        last = LAST_UPDATE.strftime("%d.%m.%Y %H:%M МСК") if LAST_UPDATE else "—"
+        text = (
+            f"<b>👤 Мой профиль</b>\n\n"
+            f"ID: <code>{user.id}</code>\n"
+            f"Username: @{user.username or '—'}\n"
+            f"Имя: {user.first_name or '—'}\n\n"
+            f"Бот: <b>Free VPN • Crimson</b> — @wtfparsbot\n"
+            f"В кэше: <b>{total}</b> конфигов\n"
+            f"Обновлено: {last}\n\n"
+            f"RAW — вставь 1 ссылку в клиент, остальное — по кнопкам категорий."
+        )
+        await query.message.reply_text(text, parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ Назад", callback_data="home")]]))
         return
     if data == "help":
-        await query.message.reply_text(config.HELP_TEXT, parse_mode=ParseMode.HTML)
+        await query.message.reply_text(config.HELP_TEXT, parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ Назад", callback_data="home")]]))
         return
-    if data == "sources":
-        await query.message.reply_text(config.SOURCES_TEXT, parse_mode=ParseMode.HTML)
-        return
-    if data == "stats":
-        # инлайн версия stats — без /команды
-        if not CACHE:
-            await query.answer("Гружу кэш...", show_alert=False)
+    # Админ-only: источники, статистика, обновить
+    if data in ("sources", "admin_stats", "stats", "admin_refresh", "refresh"):
+        if not config.is_admin(uid):
+            await query.answer("Только для админа", show_alert=True)
+            return
+        if data == "sources":
+            await query.message.reply_text(config.SOURCES_TEXT, parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ Назад", callback_data="home")]]))
+            return
+        if data in ("admin_stats", "stats"):
+            if not CACHE:
+                await query.answer("Гружу кэш...", show_alert=False)
+                await update_cache()
+            lines = [f"<b>Статистика • {msk_time()}</b>"]
+            total = 0
+            for k, d in CACHE.items():
+                cnt = len(d.get("configs", []))
+                total += cnt
+                name = config.SOURCES.get(k, {}).get("name", k)[:28]
+                lines.append(f"• {k}: <b>{cnt}</b> — {name}")
+            lines.append(f"\nВсего: <b>{total}</b>")
+            lines.append("\nRAW:")
+            for key, agg in config.AGGREGATED_SUBS.items():
+                fname = agg["filename"]
+                cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+                raw = get_raw_url(fname)
+                lines.append(f"• {fname}: <b>{cnt}</b>")
+                lines.append(f"  <code>{raw}</code>")
+            await query.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("‹ Назад", callback_data="home")]]))
+            return
+        if data in ("admin_refresh", "refresh"):
+            await query.message.edit_text("Обновляю кэш… 15 сек")
             await update_cache()
-        lines = [f"<b>📊 Статистика {msk_time()}</b>"]
-        total = 0
-        for k, d in CACHE.items():
-            cnt = len(d.get("configs", []))
-            total += cnt
-            name = config.SOURCES.get(k, {}).get("name", k)[:28]
-            lines.append(f"• {k}: <b>{cnt}</b> — {name}")
-        lines.append(f"\n<b>Всего: {total} VLESS</b>")
-        lines.append("\n<b>🔥 RAW:</b>")
-        for key, agg in config.AGGREGATED_SUBS.items():
-            fname = agg["filename"]
-            cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
-            raw = get_raw_url(fname)
-            lines.append(f"• {fname}: <b>{cnt}</b>")
-            lines.append(f"  <code>{raw}</code>")
-        await query.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ В меню", callback_data="home")]]))
-        return
+            await query.message.edit_text(f"Готово • {msk_time()}", reply_markup=main_keyboard(uid))
+            return
 
-    if data == "refresh":
-        await query.message.edit_text("🔄 Обновляю кэш с GitHub... 15 сек")
-        await update_cache()
-        await query.message.edit_text(f"✅ Кэш обновлён! {msk_time()}", reply_markup=main_keyboard())
-        return
+    # Минималистичные RAW: белые / чёрные / полный
+    if data == "white":
+        data = "raw:WHITE_FULL"
+    if data == "black":
+        data = "raw:BLACK_FULL"
+    if data == "full":
+        data = "raw:FULL"
 
     if data.startswith("raw:"):
         agg_key = data.split(":",1)[1]
         if agg_key not in config.AGGREGATED_SUBS:
-            await query.message.reply_text("Неизвестная RAW подписка")
+            await query.message.reply_text("Неизвестная подписка")
             return
         fname = config.AGGREGATED_SUBS[agg_key]["filename"]
         title = config.AGGREGATED_SUBS[agg_key]["profile_title"]
         if fname not in AGGREGATED_CACHE or AGGREGATED_CACHE[fname].get("count") is None:
-            await query.message.edit_text("⏳ Собираю RAW подписку...")
+            await query.message.edit_text("Собираю…")
             await update_cache()
-        cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+        cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "—")
         raw = get_raw_url(fname)
-        path = DATA_DIR / fname
-        # Показываем шапку файла
-        header_preview = ""
-        if path.exists():
-            header_preview = "\n".join(open(path, encoding="utf-8").read().splitlines()[:12])
+        # Минималистичная карточка — без вырвиглазного
         text = (
             f"<b>{title}</b>\n"
-            f"📦 Конфигов: <b>{cnt}</b>\n"
-            f"🔗 <b>RAW подписка (вставь 1 ссылкой в клиент):</b>\n<code>{raw}</code>\n\n"
-            f"<i>Шапка как в примере igareck:</i>\n<pre>{header_preview[:800]}</pre>\n"
-            f"🕐 {msk_time()}"
+            f"<code>{raw}</code>\n\n"
+            f"Конфигов: <b>{cnt}</b>  •  Автообновление — каждый час\n"
+            f"Клиенты: Happ, Streisand, Hiddify, Throne, v2rayNG\n"
+            f"<i>Вставь ссылку как URL подписки и обнови</i>"
         )
         kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📄 Скачать файл", callback_data=f"rawfile:{fname}"),
-             InlineKeyboardButton("📋 Копировать RAW", callback_data=f"rawcopy:{fname}")],
-            [InlineKeyboardButton("⬅️ Назад", callback_data="home")]
+            [InlineKeyboardButton("Скопировать ссылку", callback_data=f"rawcopy:{fname}"),
+             InlineKeyboardButton("Скачать файл", callback_data=f"rawfile:{fname}")],
+            [InlineKeyboardButton("‹ Назад", callback_data="home")]
         ])
-        await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
-        # Авто-отправка файла
-        if path.exists():
-            try:
-                await query.message.reply_document(document=open(path, "rb"), filename=fname, caption=f"{title} • {cnt} configs")
-            except Exception as e:
-                logger.error(e)
+        try:
+            await query.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+        except:
+            await query.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
         return
 
     if data.startswith("rawcopy:"):

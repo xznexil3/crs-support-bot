@@ -4,191 +4,236 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0") or 0)
+ADMIN_ID = int(os.getenv("ADMIN_ID", "768223541") or 768223541)
+# Доп. админы через запятую
+_extra_admins = os.getenv("ADMIN_IDS", "")
+ADMIN_IDS = {ADMIN_ID}
+if _extra_admins:
+    for x in _extra_admins.split(","):
+        try:
+            ADMIN_IDS.add(int(x.strip()))
+        except: pass
 CHANNEL_ID = os.getenv("CHANNEL_ID", "")
-CHECK_MODE = os.getenv("CHECK_MODE", "syntax")  # none | syntax | tcp
+CHECK_MODE = os.getenv("CHECK_MODE", "syntax")
 UPDATE_INTERVAL = int(os.getenv("UPDATE_INTERVAL", "30"))
 PUBLIC_URL = os.getenv("PUBLIC_URL", "")
 PORT = int(os.getenv("PORT", "8080"))
 
-# === GitHub RAW публикация ===
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", os.getenv("GH_TOKEN", ""))  # твой ghp_... для пуша подписок
-GITHUB_REPO = os.getenv("GITHUB_REPO", "xznexil3/crs-support-bot")  # куда пушить
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", os.getenv("GH_TOKEN", ""))
+GITHUB_REPO = os.getenv("GITHUB_REPO", "xznexil3/crs-support-bot")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
-# Папка в репозитории куда класть сгенерированные подписки (raw ссылка будет .../branch/<path>)
-GITHUB_SUB_PATH = os.getenv("GITHUB_SUB_PATH", "")  # пусто = в корень, или "subs" / "subscription"
+GITHUB_SUB_PATH = os.getenv("GITHUB_SUB_PATH", "")
 
-# === Источники GitHub ===
-# Основной репозиторий для РФ - igareck/vpn-configs-for-russia
+def is_admin(uid: int) -> bool:
+    return uid in ADMIN_IDS
+
+# === Источники ===
+# igareck — база, + дополнительные подписки против БС
 SOURCES = {
     "black_all": {
-        "name": "⬛ Чёрные списки — VLESS (все конфиги)",
-        "description": "Полный VPN туннель — весь трафик через VLESS Reality. Для обхода блокировок по чёрным спискам.",
+        "name": "Чёрные списки — VLESS",
+        "description": "Весь трафик через VPN",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS.txt",
         ],
-        "count_label": "91+ конфигов",
     },
     "black_mobile": {
-        "name": "📱 Чёрные списки — VLESS Mobile (150 лучших)",
-        "description": "Топ-150 самых быстрых VLESS для телефона. Оптимизировано для мобильных клиентов (Happ, v2rayNG, Streisand).",
+        "name": "Чёрные списки — Mobile",
+        "description": "150 лучших для телефона",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS_mobile.txt",
         ],
-        "count_label": "150 конфигов",
     },
     "white_cidr_all": {
-        "name": "⬜ Белые списки CIDR — ВСЕ",
-        "description": "Обход ЖЁСТКИХ белых списков по CIDR-фильтрации. Содержит все проверенные белые подсети от разных хостеров.",
+        "name": "Белые списки — CIDR ALL",
+        "description": "Все белые подсети",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-CIDR-RU-all.txt",
         ],
-        "count_label": "~30 конфигов",
     },
     "white_cidr_checked": {
-        "name": "⬜ Белые списки CIDR — VK/YA/CDN/Beeline",
-        "description": "Только проверенные белые подсети: VK, Yandex, CDNVideo, Beeline. Самый надёжный вариант для белых списков.",
+        "name": "Белые списки — VK / YA / CDN",
+        "description": "Только VK, Yandex, CDNVideo, Beeline — самые стабильные",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-CIDR-RU-checked.txt",
         ],
-        "count_label": "~10 конфигов",
     },
     "white_mobile": {
-        "name": "📱 Белые списки — Mobile 150",
-        "description": "150 лучших конфигов для белых списков, оптимизировано для телефона.",
+        "name": "Белые списки — Mobile",
+        "description": "Для телефона, CIDR",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile.txt",
         ],
-        "count_label": "~28 конфигов",
     },
     "white_sni": {
-        "name": "⬜ Белые списки SNI (Fake SNI)",
-        "description": "Только Fake SNI. CIDR не обходит — для лёгких DPI.",
+        "name": "Белые — SNI",
+        "description": "Только Fake SNI",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-SNI-RU-all.txt",
         ],
-        "count_label": "переменно",
     },
     "ss_black": {
-        "name": "🔐 Shadowsocks — Чёрные списки",
-        "description": "Shadowsocks + Trojan + Hysteria для чёрных списков. Альтернатива VLESS.",
+        "name": "Shadowsocks — Чёрные",
+        "description": "SS, Trojan, Hysteria2 для чёрных",
         "urls": [
             "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_SS+All_RUS.txt",
         ],
-        "count_label": "~51 конфиг",
     },
-    # Универсальные fallback-источники (если основные пустые)
+    # === Дополнительные подписки против БС (по твоему списку) ===
+    "extra_zieng2": {
+        "name": "Подписка от zieng2",
+        "description": "Белые списки от zieng2",
+        "urls": [
+            "https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt",
+            "https://codeberg.org/zieng2/wl/raw/branch/main/vless_universal.txt",
+            "https://gitlab.com/zieng2/wl/-/raw/main/vless_universal.txt",
+        ],
+    },
+    "extra_etoneya_white": {
+        "name": "Подписка от etoneya — белые",
+        "description": "whitelist etoneya",
+        "urls": [
+            "https://etoneya.su/whitelist",
+            "https://raw.githubusercontent.com/EtoNeYaProject/etoneyaproject.github.io/refs/heads/main/whitelist",
+            "https://ety.twinkvibe.gay/whitelist",
+            "https://etoneya.vercel.app/whitelist",
+            "https://alley.serv00.net/whitelist",
+        ],
+    },
+    "extra_etoneya_black": {
+        "name": "Подписка от etoneya — чёрные",
+        "description": "etoneya other/blacklist",
+        "urls": [
+            "https://etoneya.su/other",
+            "https://etoneya.su/1",
+            "https://raw.githubusercontent.com/EtoNeYaProject/etoneyaproject.github.io/refs/heads/main/1",
+            "https://raw.githubusercontent.com/EtoNeYaProject/etoneyaproject.github.io/refs/heads/main/2",
+        ],
+    },
+    "extra_bye2": {
+        "name": "ByeWhiteLists 2.0",
+        "description": "Подписка ByeWhiteLists 2.0",
+        "urls": [
+            "https://raw.githubusercontent.com/ByeWhiteLists/ByeWhiteLists2/refs/heads/main/ByeWhiteLists2.txt",
+        ],
+    },
+    "extra_cid": {
+        "name": "CID VPN",
+        "description": "Подписка CID VPN — placeholder, замени url если есть актуальный",
+        "urls": [
+            # TODO: вставь актуальный raw url CID VPN, если есть
+            # "https://raw.githubusercontent.com/.../cid.txt",
+            "https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/1.1.txt",
+        ],
+    },
+    "extra_wrtrmmu": {
+        "name": "Подписка от wrtrmmu",
+        "description": "WARP / TURN VK Calls — placeholder",
+        "urls": [
+            # TODO: вставь raw от wrtrmmu
+            "https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/2.1.txt",
+        ],
+    },
+    "extra_vercel": {
+        "name": "Подписка от Vercel",
+        "description": "Зеркало через Vercel",
+        "urls": [
+            "https://etoneya.vercel.app/whitelist",
+            "https://etoneya.vercel.app/1",
+            "https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/26.txt",
+        ],
+    },
+    "extra_bolt": {
+        "name": "VPN bolt",
+        "description": "Подписка VPN bolt — placeholder",
+        "urls": [
+            "https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/3.1.txt",
+        ],
+    },
+    "extra_sbornik": {
+        "name": "Сборник подписок против БС",
+        "description": "Сборник: все белые + чёрные в одном месте",
+        "urls": [
+            "https://raw.githubusercontent.com/VAL41K/bypass-rkn-blocks/main/README.md",  # парсер вытянет vless из описания, если будут
+        ],
+    },
     "universal": {
-        "name": "🌍 Универсальные VLESS",
-        "description": "Фолбэк-источники если РФ-репозитории недоступны.",
+        "name": "Универсальные VLESS",
+        "description": "Фолбэк, если РФ-источники пустые",
         "urls": [
             "https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Splitted-By-Protocol/vless.txt",
             "https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/main/V2Ray-Config-By-EbraSha.txt",
             "https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/vless.txt",
         ],
-        "count_label": "100+",
     },
 }
 
-# Группы для команд
 GROUPS = {
-    "black": ["black_all", "black_mobile"],
-    "white": ["white_cidr_all", "white_cidr_checked", "white_mobile", "white_sni"],
-    "all": ["black_all", "black_mobile", "white_cidr_all", "white_cidr_checked", "white_mobile", "ss_black"],
+    "black": ["black_all", "black_mobile", "ss_black", "extra_etoneya_black", "extra_bolt", "extra_vercel"],
+    "white": ["white_cidr_all", "white_cidr_checked", "white_mobile", "white_sni", "extra_zieng2", "extra_etoneya_white", "extra_bye2", "extra_cid", "extra_wrtrmmu", "extra_sbornik"],
+    "all": ["black_all", "black_mobile", "ss_black", "white_cidr_all", "white_cidr_checked", "white_mobile", "extra_zieng2", "extra_etoneya_white", "extra_bye2", "extra_etoneya_black"],
 }
 
-# === АГРЕГИРОВАННЫЕ RAW ПОДПИСКИ (одна большая ссылка) ===
-# Каждая собирается из указанных категорий, кладётся в GitHub как один файл,
-# и отдаётся как raw.githubusercontent.com/.../FILE.txt — вставляешь 1 ссылку в клиент.
+# Одна большая подписка = все спарсенные (белые + чёрные) вместе, но и раздельно
 AGGREGATED_SUBS = {
     "BLACK_FULL": {
-        "filename": "BLACK_FULL.txt",  # будет https://raw.githubusercontent.com/xznexil3/vless-parser-bot/main/BLACK_FULL.txt
-        "profile_title": "🏴 ЧЕРНЫЕ СПИСКИ 🏴 BLACK LISTS | Полная • Full | SS, Hy2, Vmess, Trojan",
-        "source_keys": ["black_all", "black_mobile", "ss_black"],
-        "description": "Все чёрные списки — одна большая подписка (как в примере igareck)",
+        "filename": "BLACK_FULL.txt",
+        "profile_title": "Free VPN • Crimson — Black",
+        "source_keys": ["black_all", "black_mobile", "ss_black", "extra_etoneya_black", "extra_bolt", "extra_vercel"],
+        "description": "Чёрные списки",
     },
     "WHITE_FULL": {
         "filename": "WHITE_FULL.txt",
-        "profile_title": "🏳️ БЕЛЫЕ СПИСКИ 🏳️ WHITE LISTS | Полная • Full | CIDR",
-        "source_keys": ["white_cidr_all", "white_cidr_checked", "white_mobile"],
-        "description": "Все белые CIDR — одна подписка для жёстких ТСПУ",
+        "profile_title": "Free VPN • Crimson — White",
+        "source_keys": ["white_cidr_all", "white_cidr_checked", "white_mobile", "white_sni", "extra_zieng2", "extra_etoneya_white", "extra_bye2", "extra_cid", "extra_wrtrmmu", "extra_sbornik"],
+        "description": "Белые списки",
     },
-    "COMBINED": {
-        "filename": "COMBINED.txt",
-        "profile_title": "🌐 COMBINED | Чёрные + Белые | All-in-One",
-        "source_keys": ["black_all", "black_mobile", "ss_black", "white_cidr_all", "white_cidr_checked", "white_mobile"],
-        "description": "Всё вместе — чёрные + белые в одном файле",
-    },
-    "UNIVERSAL_PLUS": {
-        "filename": "UNIVERSAL_PLUS.txt",
-        "profile_title": "🌍 UNIVERSAL PLUS | Все источники + Мировые VLESS",
-        "source_keys": ["black_all", "black_mobile", "ss_black", "white_cidr_all", "white_cidr_checked", "white_mobile", "universal"],
-        "description": "Все РФ + мировые VLESS (10k+) — максимальная подписка",
+    "FULL": {
+        "filename": "FULL.txt",
+        "profile_title": "Free VPN • Crimson — Full",
+        "source_keys": ["black_all", "black_mobile", "ss_black", "white_cidr_all", "white_cidr_checked", "white_mobile", "white_sni", "extra_zieng2", "extra_etoneya_white", "extra_bye2", "extra_etoneya_black", "extra_cid", "extra_wrtrmmu", "extra_vercel", "extra_bolt", "extra_sbornik"],
+        "description": "Полный список — все белые и чёрные вместе",
     },
 }
 
-# Тексты
-WELCOME_TEXT = """
-🛰️ <b>VLESS Парсер Бот</b> — рабочие конфиги для РФ
+# Для совместимости старые ключи FULL/COMBINED/BLACK_FULL/WHITE_FULL пусть указывают на новые
+# COMBINED = FULL
+AGGREGATED_SUBS["COMBINED"] = AGGREGATED_SUBS["FULL"]
 
-Жми кнопки ниже — никаких «/команд» не нужно. Я парсю <b>рабочие VLESS Reality</b> прямо с GitHub и отдаю их как <b>RAW-подписку</b> одной ссылкой.
+WELCOME_TEXT = """<b>Free VPN • Crimson</b> — рабочие автообновляемые конфиги для вашего «суверенного» интернета.
 
-<b>Два режима:</b>
-⬛ <b>Чёрные</b> — весь трафик через VPN (YouTube, Discord, ChatGPT)
-⬜ <b>Белые</b> — для жёстких ТСПУ, когда работает только VK/Яндекс
+• Два режима:
+[⬛] Чёрные — весь трафик через VPN
+[⬜] Белые — для жёстких ТСПУ, когда работает только VK / Яндекс
 
-👇 <b>Выбери кнопку:</b>
-🔥 <b>RAW</b> — одна большая ссылка с шапкой как у igareck (вставляешь 1 URL в клиент)
-📂 Категории — отдельные файлы по типам
+• Выбери кнопку:
+• <b>Полный список</b> — одна большая ссылка (вставляешь 1 URL в клиент)
+• <b>Белые / Чёрные</b> — раздельные подписки по типам
 """
 
-HELP_TEXT = """
-<b>📖 Как пользоваться — только кнопки</b>
+HELP_TEXT = """<b>Free VPN • Crimson — помощь</b>
 
-<b>Главное меню (/start):</b>
-🔥 <b>RAW ЧЁРНЫЕ FULL</b> — 🏴 Чёрные списки, полная подписка <code>SS, Hy2, Vmess, Trojan</code> с шапкой igareck
-🔥 <b>RAW БЕЛЫЕ FULL</b> — 🏳️ Белые CIDR для обхода белых списков
-🚀 <b>RAW COMBINED</b> — всё вместе (чёрные + белые)
-🌍 <b>UNIVERSAL PLUS</b> — всё + мировые VLESS 10k+
+Нажми кнопку в меню:
 
-📂 <b>Отдельные категории:</b> нажми <code>⬛ Чёрные VLESS</code>, <code>📱 Mobile</code>, <code>⬜ Белые</code> — бот пришлёт 2 файла: <code>.txt</code> и <code>_base64.txt</code>
+<b>Мой профиль</b> — твой ID, статистика
+<b>Белые списки</b> — подписка для белых ТСПУ (VK, Яндекс, CDN)
+<b>Чёрные списки</b> — классический VPN для YouTube, Discord и т.д.
+<b>Полный список</b> — всё вместе, одна RAW-ссылка
+<b>Помощь</b> — это окно
 
-<b>Внутри категории:</b>
-📄 <i>Получить файл</i> — прислать .txt / base64
-📋 <i>Скопировать base64</i> — текст подписки
-🔍 <i>Показать 5 примеров</i> — превью конфигов
-📷 <i>QR</i> — QR первого конфига
-⬅️ <i>Назад</i> — в меню
+<b>Как подключить:</b>
+1. Нажми <b>Полный список</b> или <b>Белые / Чёрные</b>
+2. Скопируй ссылку вида <code>https://raw.githubusercontent.com/.../FULL.txt</code>
+3. Вставь как <b>URL подписки</b> в Happ / Streisand / v2rayNG / Hiddify / Throne / NekoBox
+4. Обнови подписку → выбери сервер с меньшей задержкой → Connect
 
-<b>Как подключить RAW:</b>
-1. Нажми кнопку RAW → скопируй ссылку <code>https://raw.githubusercontent.com/.../BLACK_FULL.txt</code>
-2. Вставь как <b>URL подписки</b> в Happ / Streisand / v2rayNG / Hiddify / Throne / NekoRay
-3. Обнови подписку → выбери сервер с пингом поменьше → Connect
+Клиенты: <b>Happ, Streisand, v2rayNG, Hiddify, Throne, NekoRay, Karing, Exclave</b>
+Автообновление в клиенте — раз в час.
 
-<b>Клиенты:</b>
-Android: v2rayNG, v2rayTun, Happ, Hiddify
-iOS: Streisand, V2Box, Happ, Shadowrocket
-Win: Hiddify, Throne, NekoRay
-Linux: Throne, Hiddify, V2rayA
-
-⚠️ Конфиги публичные — обновляй подписку каждые 6-12ч. Не свети один IP на Госуслугах + VPN.
+Вопросы — @wtfparsbot
 """
 
-SOURCES_TEXT = """
-<b>🔗 Источники GitHub</b>
-
-Основной (РФ): <code>igareck/vpn-configs-for-russia</code>
-• BLACK_VLESS_RUS.txt — чёрные VLESS
-• BLACK_VLESS_RUS_mobile.txt — 150 лучших для телефона
-• WHITE-CIDR-RU-all.txt — белые CIDR все
-• WHITE-CIDR-RU-checked.txt — белые VK/YA/CDN/Beeline
-• WHITE-SNI-RU-all.txt — Fake SNI
-• BLACK_SS+All_RUS.txt — Shadowsocks
-
-Fallback:
-• barry-far/V2ray-Config (Splitted-By-Protocol/vless.txt)
-• 0xRadikal/Free-v2ray-Configs
-• ebrasha/free-v2ray-public-list
-
-Обновляется каждые 15-30 мин на GitHub Actions. Бот проверяет синтаксис + TCP-доступность.
+SOURCES_TEXT = """<b>Free VPN • Crimson — источники</b>
+Основное: igareck, zieng2, etoneya, ByeWhiteLists 2.0, CID, wrtrmmu, Vercel, VPN bolt + зеркала.
+Полный список зеркал — в конфиге бота (src/config.py → SOURCES).
 """
