@@ -75,6 +75,44 @@ def save_aggregated_file(base_dir: str, filename: str, profile_title: str, confi
 
 CHUNK_SIZE = 300
 
+# Протоколы для разделения (режимы)
+PROTOCOLS = ["vless", "trojan", "ss", "vmess", "hysteria2", "tuic"]
+
+PROTOCOL_LABELS = {
+    "vless": "VLESS",
+    "trojan": "Trojan",
+    "ss": "Shadowsocks",
+    "vmess": "VMess",
+    "hysteria2": "Hysteria2",
+    "tuic": "TUIC",
+}
+
+def detect_protocol(link: str) -> str:
+    l = link.lower().strip()
+    if l.startswith("vless://"):
+        return "vless"
+    if l.startswith("trojan://"):
+        return "trojan"
+    if l.startswith("ss://"):
+        return "ss"
+    if l.startswith("vmess://"):
+        return "vmess"
+    if l.startswith("hysteria2://") or l.startswith("hy2://"):
+        return "hysteria2"
+    if l.startswith("tuic://"):
+        return "tuic"
+    if l.startswith("ssr://"):
+        return "ssr"
+    # fallback — до ://
+    if "://" in l:
+        return l.split("://", 1)[0]
+    return "unknown"
+
+def filter_by_protocol(configs: list, proto: str) -> list:
+    if proto == "all":
+        return list(configs)
+    return [c for c in configs if detect_protocol(c) == proto]
+
 def chunk_configs(configs: list, size: int = CHUNK_SIZE):
     for i in range(0, len(configs), size):
         yield configs[i:i+size]
