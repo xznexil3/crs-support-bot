@@ -1,2 +1,0 @@
-# test
-vless://test@test.com:443?security=reality#test
