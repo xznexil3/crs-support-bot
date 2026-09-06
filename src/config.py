@@ -131,50 +131,47 @@ AGGREGATED_SUBS = {
 WELCOME_TEXT = """
 🛰️ <b>VLESS Парсер Бот</b> — рабочие конфиги для РФ
 
-Я парсю <b>рабочие VLESS Reality</b> конфиги прямо с GitHub и отдаю их в виде <b>подписок</b>.
+Жми кнопки ниже — никаких «/команд» не нужно. Я парсю <b>рабочие VLESS Reality</b> прямо с GitHub и отдаю их как <b>RAW-подписку</b> одной ссылкой.
 
 <b>Два режима:</b>
-⬛ <b>Чёрные списки</b> — классический VPN, весь трафик через сервер. Для YouTube, Discord, X/Twitter, ChatGPT.
-⬜ <b>Белые списки</b> — обход ЖЁСТКИХ блокировок (ТСПУ), когда работают только VK/Госуслуги/Яндекс. Только такие сервера и подойдут.
+⬛ <b>Чёрные</b> — весь трафик через VPN (YouTube, Discord, ChatGPT)
+⬜ <b>Белые</b> — для жёстких ТСПУ, когда работает только VK/Яндекс
 
-Выбери что тебе нужно 👇
+👇 <b>Выбери кнопку:</b>
+🔥 <b>RAW</b> — одна большая ссылка с шапкой как у igareck (вставляешь 1 URL в клиент)
+📂 Категории — отдельные файлы по типам
 """
 
 HELP_TEXT = """
-<b>📖 Помощь — как пользоваться</b>
+<b>📖 Как пользоваться — только кнопки</b>
 
-<b>🔥 RAW подписки (одна ссылка — вся категория):</b>
-/raw — все RAW ссылки (чёрные/белые/combined)
-/raw_black — ЧЁРНЫЕ FULL (SS, Hy2, Vmess, Trojan, VLESS) — шапка как у igareck
-/raw_white — БЕЛЫЕ FULL (CIDR)
-/raw_combined — Всё вместе
+<b>Главное меню (/start):</b>
+🔥 <b>RAW ЧЁРНЫЕ FULL</b> — 🏴 Чёрные списки, полная подписка <code>SS, Hy2, Vmess, Trojan</code> с шапкой igareck
+🔥 <b>RAW БЕЛЫЕ FULL</b> — 🏳️ Белые CIDR для обхода белых списков
+🚀 <b>RAW COMBINED</b> — всё вместе (чёрные + белые)
+🌍 <b>UNIVERSAL PLUS</b> — всё + мировые VLESS 10k+
 
-<b>Отдельные категории:</b>
-/black — Чёрные списки (VLESS, 91-150 шт)
-/black_mobile — 150 лучших для телефона
-/white — Белые списки (все варианты CIDR)
-/white_cidr — Белые CIDR ALL (~30 шт)
-/white_checked — VK/YA/CDN/Beeline (~10 шт, самые надёжные)
-/white_mobile — Белые для телефона
-/all — Всё вместе (групповой файл)
-/sources — Показать все источники GitHub
-/check — Проверка твоего vless:// ссылку
-/update — Обновить кэш вручную
-/sub — Мои подписки (файлы)
-/stats — Статистика
+📂 <b>Отдельные категории:</b> нажми <code>⬛ Чёрные VLESS</code>, <code>📱 Mobile</code>, <code>⬜ Белые</code> — бот пришлёт 2 файла: <code>.txt</code> и <code>_base64.txt</code>
+
+<b>Внутри категории:</b>
+📄 <i>Получить файл</i> — прислать .txt / base64
+📋 <i>Скопировать base64</i> — текст подписки
+🔍 <i>Показать 5 примеров</i> — превью конфигов
+📷 <i>QR</i> — QR первого конфига
+⬅️ <i>Назад</i> — в меню
 
 <b>Как подключить RAW:</b>
-1. Скопируй RAW ссылку: <code>https://raw.githubusercontent.com/.../BLACK_FULL.txt</code>
-2. Вставь в клиент как <b>URL подписки</b>: <b>Happ / Streisand / v2rayNG / NekoRay / Throne / Hiddify</b>
-3. Обнови подписку в клиенте → выбери сервер с минимальной задержкой → Connect
+1. Нажми кнопку RAW → скопируй ссылку <code>https://raw.githubusercontent.com/.../BLACK_FULL.txt</code>
+2. Вставь как <b>URL подписки</b> в Happ / Streisand / v2rayNG / Hiddify / Throne / NekoRay
+3. Обнови подписку → выбери сервер с пингом поменьше → Connect
 
-<b>Рекомендуемые клиенты:</b>
-• <b>Android:</b> v2rayNG, v2rayTun, Happ, Hiddify
-• <b>iOS:</b> Streisand, V2Box, Happ, Shadowrocket
-• <b>Windows:</b> Hiddify, Throne, NekoRay, v2rayN
-• <b>Linux:</b> Throne, Hiddify, V2rayA
+<b>Клиенты:</b>
+Android: v2rayNG, v2rayTun, Happ, Hiddify
+iOS: Streisand, V2Box, Happ, Shadowrocket
+Win: Hiddify, Throne, NekoRay
+Linux: Throne, Hiddify, V2rayA
 
-⚠️ <i>Конфиги публичные — меняй их каждые 6-12 часов. Не используй один IP для белых сервисов (госуслуги, банки) + VPN — палишь сервер.</i>
+⚠️ Конфиги публичные — обновляй подписку каждые 6-12ч. Не свети один IP на Госуслугах + VPN.
 """
 
 SOURCES_TEXT = """

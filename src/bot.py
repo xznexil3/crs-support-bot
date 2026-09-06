@@ -38,18 +38,21 @@ def msk_time():
 
 def main_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("⬛ Чёрные списки (VLESS)", callback_data="get:black_all"),
-         InlineKeyboardButton("📱 Чёрные Mobile 150", callback_data="get:black_mobile")],
-        [InlineKeyboardButton("⬜ Белые CIDR ALL", callback_data="get:white_cidr_all"),
-         InlineKeyboardButton("⬜ Белые VK/YA/CDN", callback_data="get:white_cidr_checked")],
-        [InlineKeyboardButton("📱 Белые Mobile", callback_data="get:white_mobile"),
-         InlineKeyboardButton("⬜ SNI (Fake)", callback_data="get:white_sni")],
-        [InlineKeyboardButton("🌍 ВСЁ ВМЕСТЕ (ALL)", callback_data="get:all"),
-         InlineKeyboardButton("🔐 Shadowsocks", callback_data="get:ss_black")],
+        # --- 🔥 RAW — одна ссылка как у igareck ---
         [InlineKeyboardButton("🔥 RAW ЧЁРНЫЕ FULL", callback_data="raw:BLACK_FULL"),
          InlineKeyboardButton("🔥 RAW БЕЛЫЕ FULL", callback_data="raw:WHITE_FULL")],
-        [InlineKeyboardButton("🚀 RAW COMBINED (все)", callback_data="raw:COMBINED")],
-        [InlineKeyboardButton("🔗 Источники", callback_data="sources"),
+        [InlineKeyboardButton("🚀 RAW COMBINED", callback_data="raw:COMBINED"),
+         InlineKeyboardButton("🌍 RAW UNIVERSAL PLUS", callback_data="raw:UNIVERSAL_PLUS")],
+        # --- 📂 Отдельные категории ---
+        [InlineKeyboardButton("⬛ Чёрные VLESS", callback_data="get:black_all"),
+         InlineKeyboardButton("📱 Чёрные Mobile", callback_data="get:black_mobile")],
+        [InlineKeyboardButton("⬜ Белые CIDR ALL", callback_data="get:white_cidr_all"),
+         InlineKeyboardButton("⬜ Белые VK/YA", callback_data="get:white_cidr_checked")],
+        [InlineKeyboardButton("📱 Белые Mobile", callback_data="get:white_mobile"),
+         InlineKeyboardButton("🔐 Shadowsocks", callback_data="get:ss_black")],
+        # --- Сервис ---
+        [InlineKeyboardButton("📊 Статистика", callback_data="stats"),
+         InlineKeyboardButton("🔗 Источники", callback_data="sources"),
          InlineKeyboardButton("❓ Помощь", callback_data="help")],
         [InlineKeyboardButton("🔄 Обновить кэш", callback_data="refresh")],
     ])
@@ -374,6 +377,30 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "sources":
         await query.message.reply_text(config.SOURCES_TEXT, parse_mode=ParseMode.HTML)
         return
+    if data == "stats":
+        # инлайн версия stats — без /команды
+        if not CACHE:
+            await query.answer("Гружу кэш...", show_alert=False)
+            await update_cache()
+        lines = [f"<b>📊 Статистика {msk_time()}</b>"]
+        total = 0
+        for k, d in CACHE.items():
+            cnt = len(d.get("configs", []))
+            total += cnt
+            name = config.SOURCES.get(k, {}).get("name", k)[:28]
+            lines.append(f"• {k}: <b>{cnt}</b> — {name}")
+        lines.append(f"\n<b>Всего: {total} VLESS</b>")
+        lines.append("\n<b>🔥 RAW:</b>")
+        for key, agg in config.AGGREGATED_SUBS.items():
+            fname = agg["filename"]
+            cnt = AGGREGATED_CACHE.get(fname, {}).get("count", "?")
+            raw = get_raw_url(fname)
+            lines.append(f"• {fname}: <b>{cnt}</b>")
+            lines.append(f"  <code>{raw}</code>")
+        await query.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ В меню", callback_data="home")]]))
+        return
+
     if data == "refresh":
         await query.message.edit_text("🔄 Обновляю кэш с GitHub... 15 сек")
         await update_cache()
@@ -708,31 +735,11 @@ def main():
     
     app = Application.builder().token(config.BOT_TOKEN).build()
     
-    # Commands
+    # Только /start — всё остальное через инлайн-кнопки (как ты просил)
     app.add_handler(CommandHandler("start", start))
+    # Скрытые алиасы — оставим для совместимости, но в меню их не показываем
     app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("sources", sources_cmd))
-    app.add_handler(CommandHandler("update", update_cmd))
     app.add_handler(CommandHandler("check", check_cmd))
-    app.add_handler(CommandHandler("stats", stats_cmd))
-    app.add_handler(CommandHandler("sub", sub_cmd))
-    app.add_handler(CommandHandler("raw", raw_cmd))
-    # алиасы для удобства
-    async def raw_black_alias(u,c): c.args = ["BLACK_FULL"]; await raw_cmd(u,c)
-    async def raw_white_alias(u,c): c.args = ["WHITE_FULL"]; await raw_cmd(u,c)
-    async def raw_combined_alias(u,c): c.args = ["COMBINED"]; await raw_cmd(u,c)
-    app.add_handler(CommandHandler("raw_black", raw_black_alias))
-    app.add_handler(CommandHandler("raw_white", raw_white_alias))
-    app.add_handler(CommandHandler("raw_combined", raw_combined_alias))
-    
-    # Групповые и одиночные команды
-    app.add_handler(CommandHandler("black", get_command_factory("black_all")))
-    app.add_handler(CommandHandler("black_mobile", get_command_factory("black_mobile")))
-    app.add_handler(CommandHandler("white", get_command_factory(None, group_keys=["white_cidr_all", "white_cidr_checked", "white_mobile"])))
-    app.add_handler(CommandHandler("white_cidr", get_command_factory("white_cidr_all")))
-    app.add_handler(CommandHandler("white_checked", get_command_factory("white_cidr_checked")))
-    app.add_handler(CommandHandler("white_mobile", get_command_factory("white_mobile")))
-    app.add_handler(CommandHandler("all", get_command_factory(None, group_keys=config.GROUPS["all"])))
     
     # Callbacks
     app.add_handler(CallbackQueryHandler(callback_handler))
