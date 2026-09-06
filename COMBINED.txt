@@ -1,6 +1,6 @@
 # profile-title: 🌐 COMBINED | Чёрные + Белые | All-in-One
 # profile-update-interval: 1
-# Date/Time: 2026-09-06 / 17:04 (Moscow)
+# Date/Time: 2026-09-06 / 17:06 (Moscow)
 # Количество: 217
 # For more info and VPN-configs - visit: www.github.com/igareck/vpn-configs-for-russia
 
